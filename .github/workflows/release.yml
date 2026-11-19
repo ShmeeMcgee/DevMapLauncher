@@ -1,0 +1,28 @@
+name: Release
+
+# Pushing a tag like v0.3 zips the script and publishes it as a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zip the script
+        run: zip -r "DevMapLauncher-${GITHUB_REF_NAME}.zip" DevMapLauncher README.md LICENSE
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Dev Map Launcher ${{ github.ref_name }}
+          files: DevMapLauncher-*.zip
+          body: |
+            Boot Call of Duty dev and prototype builds on an Xbox 360 from the controller.
+
+            **Install:** unzip, copy the `DevMapLauncher` folder to `Aurora\User\Scripts\Utility\` on the drive Aurora runs from, then restart Aurora. Open it from Back > Scripts > Utility Scripts > Dev Map Launcher.
+
+            Needs the Xbdm plugin loaded through `launch.ini`, and Hayzen (or another loader) for devkit `.exe` files. See the README for details.

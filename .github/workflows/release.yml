@@ -1,9 +1,11 @@
 name: Release
 
-# Pushing a tag like v0.3 zips the script and publishes it as a GitHub release.
+# Every push to main checks scriptVersion in DevMapLauncher/Main.lua.
+# If there's no release for that version yet, it zips the script and publishes one.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,12 +15,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Read the version
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(grep -m1 -oP 'scriptVersion\s*=\s*\K[0-9.]+' DevMapLauncher/Main.lua)
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Zip the script
-        run: zip -r "DevMapLauncher-${GITHUB_REF_NAME}.zip" DevMapLauncher README.md LICENSE
+        if: steps.ver.outputs.exists == 'false'
+        run: zip -r "DevMapLauncher-${{ steps.ver.outputs.tag }}.zip" DevMapLauncher README.md LICENSE
       - name: Publish the release
+        if: steps.ver.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          name: Dev Map Launcher ${{ github.ref_name }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Dev Map Launcher ${{ steps.ver.outputs.tag }}
           files: DevMapLauncher-*.zip
           body: |
             Boot Call of Duty dev and prototype builds on an Xbox 360 from the controller.
